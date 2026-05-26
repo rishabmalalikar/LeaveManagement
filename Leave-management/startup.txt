@@ -1,0 +1,22 @@
+
+1st step click ---> Ctr + J (terminal will open)
+.                |
+.                |
+.                V
+in terminal if it shows ---> PS E:\Rishab\project\Leave Management> 
+then paste this in terminal ---> (> cd leave-management <) ------------------------------------|
+.                                                                                              |             
+or in terminal if it shows --->PS E:\Rishab\project\Leave Management\leave-management>         |
+then do 2nd step                                                                               |
+.               |                                                                              |         
+.               |                                                                              |
+.               V                                                                              | 
+2nd step paste this in terminal ---> (> npm run dev -- --host <) <-----------------------------|           
+
+3rd step click ( + ) icon on terminal
+
+4th step paste this in terminal ---> (> cd leave-management <)
+5th step paste this in terminal ---> (> pm2 start server.js -i max --name leave-management <)
+6th step paste this in terminal ---> (> pm2 restart leave-management <)
+7th step paste this in terminal ---> (> pm2 logs leave-management <)
+
