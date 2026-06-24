@@ -71,8 +71,6 @@ export default function App() {
     message: "Login Successful",
     severity: "success",
   });
-
-  
 };
   
 

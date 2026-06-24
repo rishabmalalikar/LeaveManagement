@@ -43,8 +43,8 @@ const config = {
 
 const attendanceConfig = {
   user: "sa",
-  password: "sp@r2010din",
-  server: "rptserver",
+  password: "kleit1234",
+  server: "10.0.9.219",
   database: "easytimepro_db",
   options: {
   trustServerCertificate: true,
@@ -161,7 +161,7 @@ app.post("/login", async (req, res) => {
       { expiresIn: "30m" }
     );
 
-    // ✅ ONLY ONE RESPONSE
+    // ✅ ONLY ONE RESPONSE 
     return res.json({
       success: true,
       user,
