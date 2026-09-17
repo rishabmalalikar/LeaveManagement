@@ -481,7 +481,7 @@ return (
                           <Grid container spacing={2}>
                             {myLeaves.map((leave, index) => (
                               <Grid item xs={12} key={index}>
-                                <Card>
+                                <Card elevation={3} sx={{ p: 2, boxShadow: "3px 7px 10px rgba(108,99,255,0.3)" ,borderLeft: leave.status === "Approved" ? "10px solid green" : leave.status === "Rejected" ? "5px solid red" : "10px solid orange"}}>
                                   <CardContent>
                                     <Typography><b>Type:</b> {leave.type}</Typography>
                                     <Typography><b>Reason:</b> {leave.Leave_Reason}</Typography>
