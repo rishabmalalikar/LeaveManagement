@@ -8,6 +8,7 @@ import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import Snackbar from '@mui/material/Snackbar';
 import axios from "axios";
 import MyAttendance from "./MyAttendance";
+import AdminAttendance from "./AdminAttendance";
 
 import {
 Container,
@@ -174,7 +175,7 @@ useEffect(() => {
         severity: "success",
       });
       fetchLeaves();      
-      fetchDashboard();     // optional (to update counts)
+      fetchDashboard();    
       setTab(1);
     } else {
       setSnackbar({
@@ -276,6 +277,17 @@ return (
         }}
         label="My Attendance"
         value={2}
+        
+      />
+      <Tab
+        sx={{
+          fontSize: { xs: "0.7rem", sm: "1rem", md: "1rem" },
+          width: "fit-content",
+          padding: 0,
+          marginRight: 2
+        }}
+        label="Attendance"
+        value={3}
         
       />
     </Tabs>
@@ -422,6 +434,8 @@ return (
                 })}
               </Grid>
               ):(null)}
+
+
             </Grid>
           </Box>
         </Grid>
@@ -438,7 +452,7 @@ return (
           }}
         >
           <CardContent>
-            {tab === 0 ? (
+            {tab===0 ? (
               <form onSubmit={handleApplyLeave}>
               <Box sx={{ transition: "opacity 200ms ease", opacity: 1, pointerEvents: "auto" ,width: "100%"}}>
                 <Typography fontWeight="600" fontSize="2rem" mb={2} sx={{ textAlign: "center" }}>Leave Days</Typography>
@@ -469,7 +483,7 @@ return (
               </Button>
             </form>
             
-            ) : tab===1 ? (
+            ):tab===1 ? (
               <Box sx={{ mt: 1 }}>
                 <Typography fontWeight="600" fontSize="2rem" mb={2} sx={{ textAlign: "center" }}>My Leaves</Typography>
 
@@ -503,9 +517,11 @@ return (
               </Box>
             ):tab===2?(
               <MyAttendance user={user} />
-            ):(null)}
+            ):tab===3 && String(user.empid).padStart(6, "0") === "009664" ? (
+                <AdminAttendance/>
+                ):(null)}
 
-            
+
           </CardContent>
 
         </Card>

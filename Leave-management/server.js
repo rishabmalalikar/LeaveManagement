@@ -94,6 +94,20 @@ function authenticateToken(req, res, next) {
 }
 
 
+function authorizeAttendanceAdmin(req, res, next) {
+  const loggedInEmpId = String(req.user.empId).padStart(6, "0");
+
+  if (loggedInEmpId !== "009664") {
+    return res.status(403).json({
+      success: false,
+      message: "Access denied. Admin permission required.",
+    });
+  }
+
+  next();
+}
+
+
 
 app.get("/test-db", async (req, res) => { 
   try { 
@@ -194,14 +208,14 @@ app.get("/my-attendance/:empId", authenticateToken, async (req, res) => {
     const currentMonth = new Date().getMonth() + 1;
 
     const result = await attendancePool.request().query(`
-  SELECT 
-    CONVERT(VARCHAR, punch_time, 120) as punch_time
-  FROM dbo.iclock_transaction
-  WHERE YEAR(punch_time) = ${currentYear}
-  AND MONTH(punch_time) = ${currentMonth}
-  AND RIGHT(emp_code, 6) = '${empId}'
-  ORDER BY punch_time DESC
-`);
+      SELECT 
+        CONVERT(VARCHAR, punch_time, 120) as punch_time
+      FROM dbo.iclock_transaction
+      WHERE YEAR(punch_time) = ${currentYear}
+      AND MONTH(punch_time) = ${currentMonth}
+      AND RIGHT(emp_code, 6) = '${empId}'
+      ORDER BY punch_time DESC
+    `);
 
     res.json({
       success: true,
@@ -217,6 +231,186 @@ app.get("/my-attendance/:empId", authenticateToken, async (req, res) => {
     });
   }
 });
+
+
+
+app.get(
+  "/admin/attendance",
+  authenticateToken,
+  authorizeAttendanceAdmin,
+  async (req, res) => {
+    const { empId, year, month } = req.query;
+
+    try {
+      if (!empId || !year || !month) {
+        return res.status(400).json({
+          success: false,
+          message: "Employee ID, year, and month are required.",
+        });
+      }
+
+      const normalizedEmpId = String(empId).trim().padStart(6, "0");
+      const selectedYear = Number(year);
+      const selectedMonth = Number(month);
+
+      if (!/^\d{6}$/.test(normalizedEmpId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Employee ID must contain 6 digits.",
+        });
+      }
+
+      if (
+        !Number.isInteger(selectedYear) ||
+        selectedYear < 2000 ||
+        selectedYear > 2100
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid year.",
+        });
+      }
+
+      if (
+        !Number.isInteger(selectedMonth) ||
+        selectedMonth < 1 ||
+        selectedMonth > 12
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid month.",
+        });
+      }
+
+
+
+
+      const attendancePool = await getAttendanceConnection();
+
+      const result = await attendancePool
+        .request()
+        .input("empId", sql.NVarChar, normalizedEmpId)
+        .input("year", sql.Int, selectedYear)
+        .input("month", sql.Int, selectedMonth)
+        .query(`
+          SELECT
+              id,
+              emp_code,
+              CONVERT(VARCHAR(19), punch_time, 120) AS punch_time,
+              punch_state,
+              verify_type,
+              work_code,
+              terminal_sn,
+              terminal_alias
+          FROM dbo.iclock_transaction
+          WHERE
+              RIGHT(LTRIM(RTRIM(emp_code)), 6) = @empId
+              AND punch_time >= DATEFROMPARTS(@year, @month, 1)
+              AND punch_time < DATEADD(
+                  MONTH,
+                  1,
+                  DATEFROMPARTS(@year, @month, 1)
+              )
+          ORDER BY punch_time DESC;
+        `);
+
+      return res.json({
+        success: true,
+        data: result.recordset,
+      });
+    } catch (error) {
+      console.error("Admin attendance fetch error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch attendance.",
+      });
+    }
+  }
+);
+
+
+app.put(
+  "/admin/attendance/:id",
+  authenticateToken,
+  authorizeAttendanceAdmin,
+  async (req, res) => {
+    const { id } = req.params;
+    const { empId, punchTime } = req.body;
+
+    try {
+      const attendanceId = Number(id);
+
+      if (!Number.isInteger(attendanceId) || attendanceId <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid attendance ID.",
+        });
+      }
+
+      if (!empId || !punchTime) {
+        return res.status(400).json({
+          success: false,
+          message: "Employee ID and punch time are required.",
+        });
+      }
+
+      const normalizedEmpId = String(empId).trim().padStart(6, "0");
+
+      if (!/^\d{6}$/.test(normalizedEmpId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Employee ID must contain 6 digits.",
+        });
+      }
+
+      const punchTimeRegex =
+        /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,7})?$/;
+
+      if (!punchTimeRegex.test(punchTime)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid punch time format.",
+        });
+      }
+
+      const attendancePool = await getAttendanceConnection();
+
+      const result = await attendancePool
+        .request()
+        .input("id", sql.Int, attendanceId)
+        .input("empId", sql.NVarChar(6), normalizedEmpId)
+        .input("punchTime", sql.VarChar(27), punchTime)
+        .query(`
+          UPDATE dbo.iclock_transaction
+          SET punch_time = CONVERT(datetime2, @punchTime, 126)
+          WHERE id = @id
+            AND RIGHT(LTRIM(RTRIM(emp_code)), 6) = @empId;
+        `);
+
+      if (result.rowsAffected[0] === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Attendance record not found.",
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: "Attendance updated successfully.",
+      });
+    } catch (error) {
+      console.error("Attendance update error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update attendance.",
+      });
+    }
+  }
+);
+
+
 
 
 
